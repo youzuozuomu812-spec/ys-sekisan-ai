@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#17252d">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Ys'積算AI</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f4f6f8;color:#18212b}header{background:#17252d;color:#fff;padding:18px 16px;position:sticky;top:0;z-index:5}h1{font-size:21px;margin:0 0 3px}header p{margin:0;font-size:12px;opacity:.75}main{max-width:780px;margin:auto;padding:14px}.card{background:#fff;border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px #0000000d}h2{font-size:16px;margin:0 0 13px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}label{font-size:12px;font-weight:700;color:#58636e;display:block}input,select,button{width:100%;padding:12px;border:1px solid #d5dce2;border-radius:9px;font-size:16px;background:#fff}.unit{display:flex;gap:7px;align-items:center}.unit input{min-width:0}.unit span{font-size:13px;color:#68737d;min-width:34px}button{border:0;background:#1d5960;color:#fff;font-weight:700;cursor:pointer;margin-top:10px}.secondary{background:#e9eef0;color:#26343b}.danger{background:#9b3f3f}.row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #edf0f2}.row strong{font-size:17px}.total{font-size:23px;font-weight:800;padding-top:12px}.profit{display:grid;grid-template-columns:1fr 1fr;gap:10px}.box{background:#f1f5f6;border-radius:10px;padding:12px}.box small{display:block;color:#68737d}.box b{font-size:20px}.note{font-size:12px;color:#68737d;line-height:1.6}.pill{display:inline-block;background:#e8f0f0;padding:4px 8px;border-radius:999px;font-size:11px;margin-bottom:8px}.hidden{display:none}.job{border:1px solid #e0e5e8;border-radius:10px;padding:11px;margin:8px 0}.job b{display:block}.job button{width:auto;padding:7px 10px;font-size:12px;margin:7px 5px 0 0}.ok{color:#17624c;font-weight:700}@media(max-width:520px){.grid{grid-template-columns:1fr}.profit{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<header><h1>Ys'積算AI</h1><p>建設業向け・積算 / 見積 / 粗利管理</p></header>
+<main>
+
+<section class="card">
+<h2>① 工事種類</h2>
+<label>工事を選択
+<select id="type" onchange="applyType()">
+<option value="standard">掘削・路盤・舗装</option>
+<option value="uneven">不陸舗装</option>
+<option value="permeable">透水性舗装</option>
+</select></label>
+<p class="note" id="typeNote"></p>
+</section>
+
+<section class="card">
+<h2>② 工事条件</h2>
+<div class="grid">
+<label>舗装面積<div class="unit"><input id="area" type="number" value="130"><span>㎡</span></div></label>
+<label>掘削深さ<div class="unit"><input id="excDepth" type="number" value="25"><span>cm</span></div></label>
+<label>路盤厚<div class="unit"><input id="baseDepth" type="number" value="20"><span>cm</span></div></label>
+<label>舗装厚<div class="unit"><input id="paveDepth" type="number" value="5"><span>cm</span></div></label>
+<label>地先ブロック<div class="unit"><input id="block" type="number" value="25"><span>m</span></div></label>
+</div>
+</section>
+
+<section class="card">
+<h2>③ 登録単価</h2>
+<div class="grid">
+<label>掘削・積込み<div class="unit"><input id="uExc" type="number" value="1800"><span>円/㎥</span></div></label>
+<label>残土処分<div class="unit"><input id="uSoil" type="number" value="1800"><span>円/㎥</span></div></label>
+<label>路盤工一式<div class="unit"><input id="uBase" type="number" value="2400"><span>円/㎡</span></div></label>
+<label>舗装工一式<div class="unit"><input id="uPave" type="number" value="4200"><span>円/㎡</span></div></label>
+<label>地先ブロック<div class="unit"><input id="uBlock" type="number" value="3600"><span>円/m</span></div></label>
+<label>回送費<div class="unit"><input id="uMobil" type="number" value="60000"><span>円/式</span></div></label>
+</div>
+<div style="margin-top:10px"><span class="pill">舗装単価ルール</span>
+<div class="note">不陸舗装：150㎡未満 4,600円/㎡ ／ 150㎡以上 4,300円/㎡<br>透水性舗装：150㎡未満 4,800円/㎡ ／ 150㎡以上 4,300円/㎡</div></div>
+<label style="margin-top:12px">諸経費<select id="over"><option value=".10">10%</option><option value=".12">12%</option><option value=".15" selected>15%</option></select></label>
+<button onclick="calc()">積算する</button>
+<button class="secondary" onclick="saveRates()">単価を保存</button>
+</section>
+
+<section class="card">
+<h2>④ 自動積算</h2>
+<div id="details"></div>
+</section>
+
+<section class="card">
+<h2>⑤ 原価・粗利</h2>
+<p class="note">実際の原価を入力すると利益を計算できます。</p>
+<label>実際の原価<div class="unit"><input id="cost" type="number" placeholder="例：850000"><span>円</span></div></label>
+<label style="margin-top:10px">目標粗利率<div class="unit"><input id="target" type="number" value="30"><span>%</span></div></label>
+<button class="secondary" onclick="calc()">利益を計算</button>
+<div id="profit" class="profit" style="margin-top:12px"></div>
+</section>
+
+<section class="card">
+<h2>⑥ 案件保存</h2>
+<label>案件名<input id="jobName" type="text" placeholder="例：○○駐車場舗装"></label>
+<button onclick="saveJob()">この案件を保存</button>
+<div id="jobs"></div>
+</section>
+
+<section class="card">
+<h2>⑦ AI相談文</h2>
+<textarea id="prompt" style="width:100%;min-height:150px;border:1px solid #d5dce2;border-radius:9px;padding:12px;font-size:14px"></textarea>
+<button onclick="copyPrompt()">AI相談文をコピー</button>
+</section>
+
+</main>
+<script>
+const yen=n=>Math.round(n).toLocaleString('ja-JP')+'円';
+const val=id=>Number(document.getElementById(id).value)||0;
+function loadRates(){
+ const r=JSON.parse(localStorage.getItem('ys_rates')||'null');
+ if(r) Object.keys(r).forEach(k=>{if(document.getElementById(k))document.getElementById(k).value=r[k]});
+}
+function saveRates(){
+ const ids=['uExc','uSoil','uBase','uPave','uBlock','uMobil','over'];
+ const r={};ids.forEach(id=>r[id]=val(id));localStorage.setItem('ys_rates',JSON.stringify(r));
+ alert('単価をこの端末に保存しました。');
+}
+function applyType(){
+ const t=document.getElementById('type').value, a=val('area');
+ if(t==='uneven'||t==='permeable'){
+   document.getElementById('uPave').value = t==='uneven' ? (a>=150?4300:4600) : (a>=150?4300:4800);
+   document.getElementById('typeNote').textContent=t==='uneven'?'不陸舗装単価を面積に応じて自動設定します。':'透水性舗装単価を面積に応じて自動設定します。';
+ } else document.getElementById('typeNote').textContent='通常の掘削・路盤・舗装単価を使用します。';
+}
+function calc(){
+ applyType();
+ const area=val('area'), exc=area*val('excDepth')/100, base=area*val('baseDepth')/100;
+ const paveVol=area*val('paveDepth')/100, asphaltT=paveVol*2.35;
+ const items=[
+ ['掘削・積込み',exc,val('uExc'),exc*val('uExc')],
+ ['残土処分',exc,val('uSoil'),exc*val('uSoil')],
+ ['路盤工一式',area,val('uBase'),area*val('uBase')],
+ ['舗装工一式',area,val('uPave'),area*val('uPave')],
+ ['地先ブロック',val('block'),val('uBlock'),val('block')*val('uBlock')],
+ ['回送費',1,val('uMobil'),val('uMobil')]];
+ let sub=items.reduce((s,x)=>s+x[3],0), overhead=sub*val('over'), total=sub+overhead;
+ document.getElementById('details').innerHTML=
+ `<div class="row"><span>掘削量</span><strong>${exc.toFixed(1)}㎥</strong></div>
+ <div class="row"><span>路盤計算量</span><strong>${base.toFixed(1)}㎥</strong></div>
+ <div class="row"><span>舗装合材計算量（2.35t/㎥）</span><strong>${asphaltT.toFixed(1)}t</strong></div>`+
+ items.map(x=>`<div class="row"><span>${x[0]}<small style="display:block;color:#7a858e">${x[1].toFixed(1)} × ${yen(x[2])}</small></span><strong>${yen(x[3])}</strong></div>`).join('')+
+ `<div class="row"><span>小計</span><strong>${yen(sub)}</strong></div>
+ <div class="row"><span>諸経費 ${(val('over')*100).toFixed(0)}%</span><strong>${yen(overhead)}</strong></div>
+ <div class="total">税別見積：${yen(total)}</div><div class="note">税込参考：${yen(total*1.1)}</div>`;
+ const cost=val('cost'), profit=total-cost, margin=total?profit/total*100:0, target=val('target')/100;
+ const minPrice=cost&&target<1?cost/(1-target):0;
+ document.getElementById('profit').innerHTML=
+ `<div class="box"><small>売上（税別）</small><b>${yen(total)}</b></div>
+ <div class="box"><small>原価</small><b>${cost?yen(cost):'未入力'}</b></div>
+ <div class="box"><small>粗利益</small><b>${cost?yen(profit):'—'}</b></div>
+ <div class="box"><small>粗利率</small><b>${cost?margin.toFixed(1)+'%':'—'}</b></div>
+ ${cost?`<div class="box" style="grid-column:1/-1"><small>目標粗利率${(target*100).toFixed(0)}%を確保する最低売価</small><b>${yen(minPrice)}</b></div>`:''}`;
+ document.getElementById('prompt').value=`建設工事の積算チェックをしてください。
+工事種類：${document.getElementById('type').selectedOptions[0].text}
+面積：${area}㎡／掘削：${val('excDepth')}cm／路盤：${val('baseDepth')}cm／舗装：${val('paveDepth')}cm／地先：${val('block')}m
+掘削積込み：${yen(val('uExc'))}/㎥、残土処分：${yen(val('uSoil'))}/㎥、路盤：${yen(val('uBase'))}/㎡、舗装：${yen(val('uPave'))}/㎡、地先：${yen(val('uBlock'))}/m、回送：${yen(val('uMobil'))}
+諸経費：${val('over')*100}%
+上記から数量・工程・見積金額・粗利を確認し、見落としやすい費用があれば指摘してください。`;
+ return total;
+}
+function saveJob(){
+ const total=calc(), name=document.getElementById('jobName').value||('案件 '+new Date().toLocaleString('ja-JP'));
+ const jobs=JSON.parse(localStorage.getItem('ys_jobs')||'[]');
+ jobs.unshift({name,total,type:document.getElementById('type').value,area:val('area'),date:new Date().toLocaleString('ja-JP')});
+ localStorage.setItem('ys_jobs',JSON.stringify(jobs.slice(0,50)));renderJobs();alert('案件を保存しました。');
+}
+function renderJobs(){
+ const jobs=JSON.parse(localStorage.getItem('ys_jobs')||'[]');
+ document.getElementById('jobs').innerHTML=jobs.length?jobs.map((j,i)=>`<div class="job"><b>${j.name}</b><span class="note">${j.date} ／ ${j.area}㎡ ／ 税別 ${yen(j.total)}</span><br><button onclick="deleteJob(${i})" class="danger">削除</button></div>`).join(''):'<p class="note">保存した案件はありません。</p>';
+}
+function deleteJob(i){const j=JSON.parse(localStorage.getItem('ys_jobs')||'[]');j.splice(i,1);localStorage.setItem('ys_jobs',JSON.stringify(j));renderJobs()}
+function copyPrompt(){navigator.clipboard.writeText(document.getElementById('prompt').value).then(()=>alert('コピーしました'))}
+loadRates();renderJobs();calc();
+</script>
+<script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");</script>
+</body>
+</html>
